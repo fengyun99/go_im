@@ -31,3 +31,26 @@ func GetUserList() []*UserBasic {
 	utils.DB.Find(&data)
 	return data
 }
+
+func CreateUser(user UserBasic) *gorm.DB {
+	return utils.DB.Create(&user)
+}
+
+func UpdateUser(user UserBasic) *gorm.DB {
+	return utils.DB.Model(&user).Where("name = ?", user.Name).Updates(&user)
+}
+
+func DeleteUserByName(user UserBasic) *gorm.DB {
+	return utils.DB.Where("name = ?", user.Name).Delete(&UserBasic{})
+}
+
+func CheckUserExist(user UserBasic) bool {
+	result := utils.DB.Where("name = ?", user.Name).First(&user)
+	if result.Error != nil {
+		// 用户不存在
+		return false
+	} else {
+		// 用户存在
+		return true
+	}
+}

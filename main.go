@@ -10,6 +10,5 @@ func main() {
 	utils.InitDB()
 
 	r := router.Router()
-
 	r.Run(":8081")
 }

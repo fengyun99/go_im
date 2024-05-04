@@ -14,15 +14,17 @@ func main() {
 
 	user := models.UserBasic{}
 
-	db.AutoMigrate(&user)
+	//db.AutoMigrate(&user)
 
-	user.Name = "默默"
-
-	db.Create(&user)
-
-	db.First(&user, 1)
-
-	db.Model(&user).Update("PassWord", 1234)
-
-	print(db.Row())
+	//user.Name = "默默"
+	//
+	//db.Create(&user)
+	//
+	//db.First(&user, 1)
+	//
+	//db.Model(&user).Update("PassWord", 1234)
+	user.Name = "fengyun"
+	user.PassWord = "1"
+	db.Model(&user).Where("name = ?", "默默").Updates(map[string]interface{}{"name": "默默", "pass_word": "1"})
+	//print(db.Row())
 }
