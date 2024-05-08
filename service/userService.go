@@ -2,7 +2,12 @@ package service
 
 import (
 	"dialog/models"
+	"fmt"
+	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"strconv"
+	"time"
 )
 
 // GetUserList
@@ -36,6 +41,13 @@ func CreateUser(c *gin.Context) {
 	user.Name = c.Query("name")
 	password := c.Query("password")
 	repassword := c.Query("repassword")
+	// 使用当前时间作为UUID的一部分
+	currentTime := time.Now()
+
+	// 将名字和当前时间拼接起来作为UUID的输入数据
+	data := user.Name + currentTime.String()
+	user.Uid = uuid.NewSHA1(uuid.NameSpaceURL, []byte(data)).String()
+
 	if password == repassword {
 		user.PassWord = password
 		if !models.CheckUserExist(user) {
@@ -56,8 +68,8 @@ func CreateUser(c *gin.Context) {
 	}
 }
 
-// UpdateUser
-// @Summary 更新用户
+// UpdateUserByName
+// @Summary 通过名字修改用户
 // @Tags 用户模块
 // @Param name query string true "用户名"
 // @Param password query string true "密码"
@@ -65,8 +77,8 @@ func CreateUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {string} json{"code","message"}
-// @Router /user/updateUser [get]
-func UpdateUser(c *gin.Context) {
+// @Router /user/updateUserByName [get]
+func UpdateUserByName(c *gin.Context) {
 	user := models.UserBasic{}
 	user.Name = c.Query("name")
 	password := c.Query("password")
@@ -79,7 +91,7 @@ func UpdateUser(c *gin.Context) {
 				"message": "用户不存在",
 			})
 		} else {
-			models.UpdateUser(user)
+			models.UpdateUserByName(user)
 			c.JSON(200, gin.H{
 				"message": "success",
 			})
@@ -100,7 +112,7 @@ func UpdateUser(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Success 200 {string} json{"code","message"}
-// @Router /user/deleteUser [get]
+// @Router /user/deleteUserByName [get]
 func DeleteUserByName(c *gin.Context) {
 	user := models.UserBasic{}
 	user.Name = c.Query("name")
@@ -110,6 +122,57 @@ func DeleteUserByName(c *gin.Context) {
 		})
 	} else {
 		models.DeleteUserByName(user)
+		c.JSON(200, gin.H{
+			"message": "success",
+		})
+	}
+}
+
+// DeleteUser
+// @Summary 删除用户
+// @Tags 用户模块
+// @Param id query string false "id"
+// @Accept json
+// @Produce json
+// @Success 200 {string} json{"code","message"}
+// @Router /user/deleteUser [get]
+func DeleteUser(c *gin.Context) {
+	user := models.UserBasic{}
+	id, _ := strconv.Atoi(c.Query("id"))
+	user.ID = uint(id)
+	models.DeleteUser(user)
+	c.JSON(200, gin.H{
+		"message": "success",
+	})
+}
+
+// UpdateUser
+// @Summary 修改用户信息
+// @Tags 用户模块
+// @Param id formData string false "id"
+// @Param name formData string false "name"
+// @Param password formData string false "password"
+// @Param phone formData string false "phone"
+// @Param email formData string false "email"
+// @Success 200 {string} json{"code","message"}
+// @Router /user/updateUser [post]
+func UpdateUser(c *gin.Context) {
+	user := models.UserBasic{}
+	id, _ := strconv.Atoi(c.PostForm("id"))
+	user.ID = uint(id)
+	user.Name = c.PostForm("name")
+	user.PassWord = c.PostForm("password")
+	user.Phone = c.PostForm("phone") // TODO:发送验证码校验
+	user.Email = c.PostForm("email") // TODO:发送邮件校验
+	// 校验
+	_, err := govalidator.ValidateStruct(user)
+	if err != nil {
+		fmt.Println(err) //输出日志会报错为什么?
+		c.JSON(200, gin.H{
+			"message": "修改参数有问题",
+		})
+	} else {
+		models.UpdateUser(user)
 		c.JSON(200, gin.H{
 			"message": "success",
 		})
