@@ -2,10 +2,12 @@ package service
 
 import (
 	"dialog/models"
+	"dialog/utils"
 	"fmt"
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"math/rand"
 	"strconv"
 	"time"
 )
@@ -39,6 +41,7 @@ func GetUserList(c *gin.Context) {
 func CreateUser(c *gin.Context) {
 	user := models.UserBasic{}
 	user.Name = c.Query("name")
+
 	password := c.Query("password")
 	repassword := c.Query("repassword")
 	// 使用当前时间作为UUID的一部分
@@ -48,8 +51,11 @@ func CreateUser(c *gin.Context) {
 	data := user.Name + currentTime.String()
 	user.Uid = uuid.NewSHA1(uuid.NameSpaceURL, []byte(data)).String()
 
+	// 简单加密
+	salt := fmt.Sprintf("%06d", rand.Int31())
+	user.Salt = salt
 	if password == repassword {
-		user.PassWord = password
+		user.PassWord = utils.Encrypt(password, salt)
 		if !models.CheckUserExist(user) {
 			models.CreateUser(user)
 			c.JSON(200, gin.H{
@@ -172,10 +178,53 @@ func UpdateUser(c *gin.Context) {
 			"message": "修改参数有问题",
 		})
 	} else {
-		models.UpdateUser(user)
-		c.JSON(200, gin.H{
-			"message": "success",
-		})
+		if !models.CheckUserExist(user) {
+			c.JSON(-1, gin.H{
+				"message": "用户不存在",
+			})
+		} else {
+			models.UpdateUser(user)
+			c.JSON(200, gin.H{
+				"message": "success",
+			})
+
+		}
+
 	}
 
+}
+
+// FindUserByNameAndPwd
+// @Summary 登录
+// @Tags 用户模块
+// @Param name query string false "name"
+// @Param password query string false "password"
+// @Accept json
+// @Produce json
+// @Success 200 {string} json{"code","message"}
+// @Router /user/findUserByNameAndPwd [post]
+func FindUserByNameAndPwd(c *gin.Context) {
+	username := c.Query("name")
+	plainPassword := c.Query("password")
+	// 加密密码
+	user := models.FindUserByName(username)
+	// 判断用户是否存在---是否需要?安全角度将直接提示登录失败就行
+	if user.Name == "" {
+		c.JSON(-1, gin.H{
+			"message": "用户不存在",
+		})
+		return
+	}
+	salt := user.Salt
+	password := utils.Encrypt(plainPassword, salt)
+	// TODO:校验登录次数和间隔时间
+	if models.FindUserByNameAndPwd(username, password) {
+		c.JSON(200, gin.H{
+			"message": "登录成功",
+		})
+	} else {
+		c.JSON(-1, gin.H{
+			"message": "登录失败",
+		})
+	}
 }
