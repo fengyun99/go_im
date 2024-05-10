@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// UserBasic 男女等，年龄等信息
 type UserBasic struct {
 	gorm.Model
 	Uid           string
@@ -16,6 +17,7 @@ type UserBasic struct {
 	Identity      string
 	ClientIP      string
 	ClientPort    string
+	Salt          string
 	LoginTime     time.Time `gorm:"default:null;"`
 	HeartbeatTime time.Time `gorm:"default:null;"`
 	LogoutTime    time.Time `gorm:"default:null;"`
@@ -62,4 +64,36 @@ func CheckUserExist(user UserBasic) bool {
 		// 用户存在
 		return true
 	}
+}
+
+func FindUserByName(name string) UserBasic {
+	user := UserBasic{}
+	// 只返回一个,Find集合
+	utils.DB.Where("name = ?", name).First(&user)
+	return user
+}
+
+func FindUserByPhone(phone string) *gorm.DB {
+	user := UserBasic{}
+	// 只返回一个,Find集合
+	return utils.DB.Where("phone = ?", phone).First(&user)
+}
+
+func FindUserByEmail(email string) *gorm.DB {
+	user := UserBasic{}
+	// 只返回一个,Find集合
+	return utils.DB.Where("email = ?", email).First(&user)
+}
+
+func FindUserByNameAndPwd(username string, password string) bool {
+	user := UserBasic{}
+	result := utils.DB.Where("name = ? and pass_word = ?", username, password).First(&user)
+	if result.Error != nil {
+		// 用户不存在
+		return false
+	} else {
+		// 用户存在
+		return true
+	}
+
 }
