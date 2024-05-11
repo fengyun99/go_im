@@ -29,6 +29,7 @@ func (table *UserBasic) TableName() string {
 	return "user_basic"
 }
 
+// GetUserList TODO:查询异常处理，以及日志记录
 func GetUserList() []*UserBasic {
 	data := make([]*UserBasic, 10)
 	utils.DB.Find(&data)
@@ -96,4 +97,9 @@ func FindUserByNameAndPwd(username string, password string) bool {
 		return true
 	}
 
+}
+
+func GenToken(user UserBasic, temp string) {
+
+	utils.DB.Model(&user).Where("id = ?", user.ID).Update("identity", temp)
 }
