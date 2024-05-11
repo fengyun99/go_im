@@ -7,10 +7,14 @@ import (
 	"github.com/asaskevich/govalidator"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
 	"math/rand"
+	"net/http"
 	"strconv"
 	"time"
 )
+
+// TODO:添加状态码,struct
 
 // GetUserList
 // @Summary 用户列表
@@ -219,6 +223,13 @@ func FindUserByNameAndPwd(c *gin.Context) {
 	password := utils.Encrypt(plainPassword, salt)
 	// TODO:校验登录次数和间隔时间
 	if models.FindUserByNameAndPwd(username, password) {
+		// 判断token是否存在---TODO:redis添加过期时间
+		if user.Identity == "" {
+			// token加密
+			str := fmt.Sprintf("%d", time.Now().Unix())
+			temp := utils.Md5Encode(str)
+			models.GenToken(user, temp)
+		}
 		c.JSON(200, gin.H{
 			"message": "登录成功",
 		})
@@ -226,5 +237,42 @@ func FindUserByNameAndPwd(c *gin.Context) {
 		c.JSON(-1, gin.H{
 			"message": "登录失败",
 		})
+	}
+}
+
+// 防止跨域站点伪造请求
+var upGrade = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+// SendMsg 为什么没打印日志
+func SendMsg(c *gin.Context) {
+	ws, err := upGrade.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer func(ws *websocket.Conn) {
+		err = ws.Close()
+		if err != nil {
+			fmt.Println(err)
+		}
+	}(ws)
+
+	MsgHandler(ws, c)
+}
+
+func MsgHandler(ws *websocket.Conn, c *gin.Context) {
+	msg, err := utils.Subscribe(c, utils.PublishKey)
+	if err != nil {
+		fmt.Println(err)
+	}
+	NowTime := time.Now().Format("2006-01-02 15:04:52")
+	m := fmt.Sprintf("[ws][%s]:%s", NowTime, msg)
+	err = ws.WriteMessage(1, []byte(m))
+	if err != nil {
+		fmt.Println(err)
 	}
 }
