@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"context"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -11,7 +13,10 @@ import (
 	"time"
 )
 
-var DB *gorm.DB
+var (
+	DB    *gorm.DB
+	REDIS *redis.Client
+)
 
 func InitConfig() {
 	viper.SetConfigName("app")
@@ -48,4 +53,50 @@ func InitDB() {
 	}
 
 	DB = _db
+}
+
+func InitRedis() {
+	host := viper.GetString("redis.host")
+	port := viper.GetInt("redis.port")
+	password := viper.GetString("redis.password")
+	db := viper.GetInt("redis.db")
+	poolSize := viper.GetInt("redis.poolSize")
+	minIdleConn := viper.GetInt("redis.minIdleConn")
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:         fmt.Sprint(host) + ":" + fmt.Sprint(port),
+		Password:     password,
+		DB:           db,
+		MinIdleConns: minIdleConn,
+		PoolSize:     poolSize,
+	})
+
+	// 创建一个上下文对象
+	ctx := context.Background()
+
+	pong, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		panic(err)
+	} else {
+		fmt.Println("Redis init success...", pong)
+		REDIS = rdb
+	}
+}
+
+const PublishKey = "websocket"
+
+// Publish 发布消息到Redis
+func Publish(ctx context.Context, channel string, msg string) error {
+	var err error
+	fmt.Println("Publish...", msg)
+	err = REDIS.Publish(ctx, channel, msg).Err()
+	return err
+}
+
+// Subscribe 订阅Redis消息
+func Subscribe(ctx context.Context, channel string) (string, error) {
+	sub := REDIS.Subscribe(ctx, channel)
+	msg, err := sub.ReceiveMessage(ctx)
+	fmt.Println("Subscribe...", msg.Payload)
+	return msg.Payload, err
 }
