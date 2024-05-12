@@ -12,8 +12,11 @@ func main() {
 		panic("failed to connect database")
 	}
 
-	user := models.UserBasic{}
-
-	// 初始化Table
-	db.AutoMigrate(&user)
+	//user := models.UserBasic{}
+	//
+	//// 初始化Table
+	//db.AutoMigrate(&user)
+	db.AutoMigrate(&models.Message{})
+	db.AutoMigrate(&models.Relation{})
+	db.AutoMigrate(&models.Group{})
 }
